@@ -1,0 +1,13 @@
+{
+	"name": "exfetch",
+	"version": "0.1.0",
+	"author": "Ruochen Jia",
+	"description": "A full implementation of DOM fetch API for Node.js",
+	"license": "MIT",
+	"main": "main.js",
+	"type": "module",
+	"devDependencies": {
+		"@types/node": "^18.11.17",
+		"typescript": "^4.9.4"
+	}
+}

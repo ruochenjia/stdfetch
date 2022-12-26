@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"lib": [ "ES2020" ],
+		"target": "ES2020",
+		"module": "Node16",
+		"allowJs": true,
+		"checkJs": false,
+		"charset": "utf-8",
+		"alwaysStrict": true,
+		"strict": true,
+		"sourceMap": false,
+		"forceConsistentCasingInFileNames": true
+	},
+	"buildOptions": {
+		"verbose": true
+	},
+	"files": [ "./fetch.ts", "./util.ts" ],
+	"compileOnSave": true
+}
