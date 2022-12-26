@@ -250,9 +250,8 @@ function rawFetch(request: Request): Promise<http.IncomingMessage> {
 			throw new FetchError("Unsupported protocol: " + protocol);
 	}
 
-	const body = request.body;
-	if (body != null)
-		body.pipe(outgoing, { end: true });
+	const body = request.body || stream.Readable.from([], { autoDestroy: true, emitClose: true });
+	body.pipe(outgoing, { end: true });
 
 	return new Promise((resolve, reject) => {
 		outgoing.on("response", resolve);
@@ -333,11 +332,27 @@ function fetchJavascriptUrl(url: URL) {
 		eval(data);
 		return new Response(void 0, { status: 200, url });
 	} catch (err) {
-		return new Response(void 0, { status: 0, url });
+		throw new FetchError("Script execution failed: " + (err instanceof Error ? err.message: err));
 	}
 }
 
-export default async function fetch(request: Request) {
+type RequestInfo = Request | URL | string;
+
+function getRequest(req: RequestInfo, init?: RequestInit | nul) {
+	switch (typeof req) {
+		case "string":
+			return new Request(req, init);
+		case "object":
+			if (req instanceof Request)
+				return req;
+			if (req instanceof URL)
+				return new Request(req, init);
+	}
+	throw new LogicError("Parameter 'request' must be a string, URL, or Request object.");
+}
+
+export default async function fetch(req: RequestInfo, init?: RequestInit | nul) {
+	const request = getRequest(req, init);
 	const url = new URL(request.url);
 	const protocol = url.protocol;
 
@@ -371,9 +386,9 @@ export default async function fetch(request: Request) {
 
 export { fetch };
 
-export async function safeFetch(request: Request) {
+export async function safeFetch(request: RequestInfo, init?: RequestInit | nul) {
 	try {
-		return await fetch(request);
+		return await fetch(request, init);
 	} catch (err) {
 		return null;
 	}

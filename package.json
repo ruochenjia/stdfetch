@@ -4,7 +4,7 @@
 	"author": "Ruochen Jia",
 	"description": "A full implementation of DOM fetch API for Node.js",
 	"license": "MIT",
-	"main": "main.js",
+	"main": "fetch.js",
 	"type": "module",
 	"devDependencies": {
 		"@types/node": "^18.11.17",
