@@ -2,6 +2,7 @@ import http from "http";
 import https from "https";
 import fs from "fs";
 import stream from "stream";
+import { buffer } from "get-stream";
 import { define } from "./util.js";
 
 const httpAgent = new http.Agent({});
@@ -30,17 +31,6 @@ type ReferrerPolicy = "" | "origin" | "same-origin" | "no-referrer" | "no-referr
 type DataInit = ArrayBufferLike | ArrayLike<number>;
 type SourceInit = DataInit | string | Buffer;
 type BodyInit = stream.Readable | SourceInit | Body;
-
-function toBuffer(stream: stream.Readable): Promise<Buffer> {
-	return new Promise((resolve, reject) => {
-		const chunks: any[] = [];
-		stream.removeAllListeners();
-		stream.setMaxListeners(3);
-		stream.on("data", (chunk) => chunks.push(chunk));
-		stream.on("end", () => resolve(Buffer.concat(chunks)));
-		stream.on("error", (error) => reject(error));
-	});
-}
 
 interface MapLike<E> {
 	[k: string]: E;
@@ -106,19 +96,6 @@ export class Body {
 			default:
 				this.body = null;
 		}
-
-		if (init == null) {
-			this.body = null;
-		} else if (init instanceof Body) {
-			this.body = init.body;
-			this.#cachedBuf = init.#cachedBuf;
-			this.#cachedText = init.#cachedText;
-			this.#cachedJson = init.#cachedJson;
-		} else if (init instanceof stream.Readable) {
-			this.body = init;
-		} else if (typeof init == "string") {
-
-		}
 	}
 
 	async arrayBuffer() {
@@ -126,14 +103,12 @@ export class Body {
 		if (cached != null)
 			return cached;
 
-		const buf = this.body;
-		if (buf == null) {
+		const body = this.body;
+		if (body == null)
 			return this.#cachedBuf = zeroBuffer;
-		}
 
-		const buffer = (await toBuffer(buf)).buffer;
-		return this.#cachedBuf = buffer;
-
+		const buf = await buffer(body, { });
+		return this.#cachedBuf = buf.buffer;
 	}
 
 	async text() {

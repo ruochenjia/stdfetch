@@ -14,9 +14,11 @@ import http from "http";
 import https from "https";
 import fs from "fs";
 import stream from "stream";
+import { buffer } from "get-stream";
 import { define } from "./util.js";
 const httpAgent = new http.Agent({});
 const httpsAgent = new https.Agent({});
+const zeroStream = stream.Readable.from([], { autoDestroy: false, emitClose: false, encoding: "utf-8" });
 const zeroBuffer = new ArrayBuffer(0);
 const decoder = new TextDecoder("utf-8", { fatal: false, ignoreBOM: false });
 class FetchError extends Error {
@@ -28,16 +30,6 @@ class LogicError extends Error {
     constructor(message) {
         super(message);
     }
-}
-function toBuffer(stream) {
-    return new Promise((resolve, reject) => {
-        const chunks = [];
-        stream.removeAllListeners();
-        stream.setMaxListeners(3);
-        stream.on("data", (chunk) => chunks.push(chunk));
-        stream.on("end", () => resolve(Buffer.concat(chunks)));
-        stream.on("error", (error) => reject(error));
-    });
 }
 export class Body {
     constructor(init) {
@@ -71,31 +63,16 @@ export class Body {
             default:
                 this.body = null;
         }
-        if (init == null) {
-            this.body = null;
-        }
-        else if (init instanceof Body) {
-            this.body = init.body;
-            __classPrivateFieldSet(this, _Body_cachedBuf, __classPrivateFieldGet(init, _Body_cachedBuf, "f"), "f");
-            __classPrivateFieldSet(this, _Body_cachedText, __classPrivateFieldGet(init, _Body_cachedText, "f"), "f");
-            __classPrivateFieldSet(this, _Body_cachedJson, __classPrivateFieldGet(init, _Body_cachedJson, "f"), "f");
-        }
-        else if (init instanceof stream.Readable) {
-            this.body = init;
-        }
-        else if (typeof init == "string") {
-        }
     }
     async arrayBuffer() {
         const cached = __classPrivateFieldGet(this, _Body_cachedBuf, "f");
         if (cached != null)
             return cached;
-        const buf = this.body;
-        if (buf == null) {
+        const body = this.body;
+        if (body == null)
             return __classPrivateFieldSet(this, _Body_cachedBuf, zeroBuffer, "f");
-        }
-        const buffer = (await toBuffer(buf)).buffer;
-        return __classPrivateFieldSet(this, _Body_cachedBuf, buffer, "f");
+        const buf = await buffer(body, {});
+        return __classPrivateFieldSet(this, _Body_cachedBuf, buf, "f");
     }
     async text() {
         const cached = __classPrivateFieldGet(this, _Body_cachedText, "f");
@@ -163,9 +140,7 @@ function rawFetch(request) {
         method: request.method,
         headers,
         setHost: true,
-        timeout: 10000,
-        localAddress: "",
-        localPort: 0,
+        timeout: 10000
     };
     let outgoing;
     switch (protocol) {
@@ -180,7 +155,7 @@ function rawFetch(request) {
         default:
             throw new FetchError("Unsupported protocol: " + protocol);
     }
-    const body = request.body || stream.Readable.from([], { autoDestroy: true, emitClose: true });
+    const body = request.body || zeroStream;
     body.pipe(outgoing, { end: true });
     return new Promise((resolve, reject) => {
         outgoing.on("response", resolve);
