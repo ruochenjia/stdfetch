@@ -6,6 +6,7 @@ import { define } from "./util.js";
 
 const httpAgent = new http.Agent({});
 const httpsAgent = new https.Agent({});
+const zeroStream = stream.Readable.from([], { autoDestroy: false, emitClose: false, encoding: "utf-8" });
 const zeroBuffer = new ArrayBuffer(0);
 const decoder = new TextDecoder("utf-8", { fatal: false, ignoreBOM: false });
 
@@ -229,10 +230,7 @@ function rawFetch(request: Request): Promise<http.IncomingMessage> {
 		method: request.method,
 		headers,
 		setHost: true,
-		timeout: 10000,
-		localAddress: "",
-		localPort: 0,
-	
+		timeout: 10000
 	};
 
 	let outgoing: http.ClientRequest;
@@ -250,7 +248,7 @@ function rawFetch(request: Request): Promise<http.IncomingMessage> {
 			throw new FetchError("Unsupported protocol: " + protocol);
 	}
 
-	const body = request.body || stream.Readable.from([], { autoDestroy: true, emitClose: true });
+	const body = request.body || zeroStream;
 	body.pipe(outgoing, { end: true });
 
 	return new Promise((resolve, reject) => {
