@@ -1,6 +1,6 @@
 {
 	"name": "stdfetch",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"author": "Ruochen Jia",
 	"description": "A full implementation of DOM fetch API for Node.js",
 	"license": "MIT",
