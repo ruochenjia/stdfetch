@@ -1,3 +1,4 @@
+/// <reference types="node" resolution-mode="require"/>
 var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
     if (kind === "m") throw new TypeError("Private method is not writable");
     if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
@@ -40,8 +41,6 @@ class Cloneable {
         this.self = _ref;
     }
     clone() {
-        const proto = this.constructor.prototype;
-        const obj = Object.create(proto);
         throw new Error("Function not implemented");
     }
 }
@@ -120,7 +119,7 @@ export class Request extends Body {
         this.redirect = cfg.redirect || "follow";
         this.referrer = cfg.referrer || "";
         this.referrerPolicy = cfg.referrerPolicy || "";
-        this.url = url instanceof URL ? url.href : url;
+        this.url = validateUrl(url);
     }
 }
 export class Response extends Body {
@@ -128,18 +127,30 @@ export class Response extends Body {
         super(body);
         const cfg = init || {};
         const status = cfg.status || 200;
-        const url = cfg.url || "";
+        const url = cfg.url;
+        if (status < 100 || status > 599)
+            throw new LogicError("Response status must be an integer between 100 and 599");
         this.headers = cfg.headers || {};
         this.ok = status >= 200 && status < 300;
         this.redirected = cfg.redirected || false;
         this.status = status;
         this.statusText = cfg.statusText || "";
         this.type = cfg.type || "default";
-        this.url = url instanceof URL ? url.href : url;
+        this.url = url == null ? "" : validateUrl(url);
     }
     writeResponse(outgoing, options) {
         outgoing.writeHead(this.status, this.statusText, this.headers);
         (this.body || zeroStream).pipe(outgoing, options);
+    }
+}
+function validateUrl(url) {
+    if (url instanceof URL)
+        return url.href;
+    try {
+        return new URL(url).href;
+    }
+    catch (err) {
+        throw new LogicError(url + " is not a valid URL.");
     }
 }
 function rawFetch(request) {
@@ -147,6 +158,7 @@ function rawFetch(request) {
     const protocol = url.protocol;
     const host = url.host;
     const headers = request.headers;
+    headers["host"] = url.host;
     const options = {
         protocol,
         host,

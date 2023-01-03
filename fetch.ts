@@ -233,6 +233,8 @@ function rawFetch(request: Request): Promise<http.IncomingMessage> {
 	const host = url.host;
 	const headers = request.headers;
 
+	headers["host"] = url.host;
+
 	const options: http.RequestOptions = {
 		protocol,
 		host,
