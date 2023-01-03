@@ -80,11 +80,6 @@ class Cloneable {
 	}
 
 	clone(): this {
-		// const proto = this.constructor.prototype;
-		// const obj = Object.create(proto);
-		
-
-
 		throw new Error("Function not implemented");
 	}
 }
@@ -184,7 +179,7 @@ export class Request extends Body implements RequestInit {
 		this.redirect = cfg.redirect || "follow";
 		this.referrer = cfg.referrer || "";
 		this.referrerPolicy = cfg.referrerPolicy || "";
-		this.url = url instanceof URL ? url.href: url;
+		this.url = validateUrl(url);
 	}
 }
 
@@ -201,7 +196,10 @@ export class Response extends Body implements ResponseInit {
 		super(body);
 		const cfg = init || {};
 		const status = cfg.status || 200;	
-		const url = cfg.url || "";
+		const url = cfg.url;
+
+		if (status < 100 || status > 599)
+			throw new LogicError("Response status must be an integer between 100 and 599");
 
 		this.headers = cfg.headers || {};
 		this.ok = status >= 200 && status < 300;
@@ -209,12 +207,23 @@ export class Response extends Body implements ResponseInit {
 		this.status = status;
 		this.statusText = cfg.statusText || "";
 		this.type = cfg.type || "default";
-		this.url = url instanceof URL ? url.href : url;
+		this.url = url == null ? "" : validateUrl(url);
 	}
 
 	writeResponse(outgoing: http.ServerResponse, options?: { end?: boolean; }) {
 		outgoing.writeHead(this.status, this.statusText, this.headers);
 		(this.body || zeroStream).pipe(outgoing, options);
+	}
+}
+
+function validateUrl(url: string | URL) {
+	if (url instanceof URL)
+		return url.href;
+
+	try {
+		return new URL(url).href;
+	} catch (err) {
+		throw new LogicError(url + " is not a valid URL.");
 	}
 }
 
