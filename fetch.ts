@@ -1,3 +1,5 @@
+/// <reference types="node" resolution-mode="require"/>
+
 import http from "http";
 import https from "https";
 import fs from "fs";
