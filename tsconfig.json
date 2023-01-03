@@ -3,17 +3,21 @@
 		"lib": [ "ES2020" ],
 		"target": "ES2020",
 		"module": "Node16",
+		"strict": true,
 		"allowJs": true,
 		"checkJs": false,
 		"charset": "utf-8",
-		"alwaysStrict": true,
-		"strict": true,
 		"sourceMap": false,
+		"alwaysStrict": true,
+		"moduleResolution": "Node16",
+		"strictNullChecks": true,
+		"strictFunctionTypes": true,
+		"strictPropertyInitialization": true,
 		"forceConsistentCasingInFileNames": true
 	},
+	"files": [ "./fetch.ts" ],
+	"compileOnSave": true,
 	"buildOptions": {
 		"verbose": true
-	},
-	"files": [ "./fetch.ts", "./util.ts" ],
-	"compileOnSave": true
+	}
 }

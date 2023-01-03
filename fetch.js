@@ -14,8 +14,10 @@ import http from "http";
 import https from "https";
 import fs from "fs";
 import stream from "stream";
+import Path from "path";
 import { buffer } from "get-stream";
 import { define } from "./util.js";
+import _mime from "./mime.js";
 const httpAgent = new http.Agent({});
 const httpsAgent = new https.Agent({});
 const zeroStream = stream.Readable.from([], { autoDestroy: false, emitClose: false, encoding: "utf-8" });
@@ -31,8 +33,21 @@ class LogicError extends Error {
         super(message);
     }
 }
-export class Body {
+class Cloneable {
+    constructor() {
+        const _ref = this;
+        this.this = _ref;
+        this.self = _ref;
+    }
+    clone() {
+        const proto = this.constructor.prototype;
+        const obj = Object.create(proto);
+        throw new Error("Function not implemented");
+    }
+}
+export class Body extends Cloneable {
     constructor(init) {
+        super();
         _Body_cachedBuf.set(this, void 0);
         _Body_cachedText.set(this, void 0);
         _Body_cachedJson.set(this, void 0);
@@ -72,7 +87,7 @@ export class Body {
         if (body == null)
             return __classPrivateFieldSet(this, _Body_cachedBuf, zeroBuffer, "f");
         const buf = await buffer(body, {});
-        return __classPrivateFieldSet(this, _Body_cachedBuf, buf, "f");
+        return __classPrivateFieldSet(this, _Body_cachedBuf, buf.buffer, "f");
     }
     async text() {
         const cached = __classPrivateFieldGet(this, _Body_cachedText, "f");
@@ -94,19 +109,18 @@ export class Request extends Body {
     constructor(url, init) {
         const cfg = init || {};
         super(cfg.body);
-        this.method = cfg.method || "GET";
-        this.headers = cfg.headers || {};
-        this.keepalive = cfg.keepalive || false;
-        this.integrity = cfg.integrity || "";
-        this.mode = cfg.mode || "cors";
+        this.destination = "";
         this.cache = cfg.cache || "default";
+        this.credentials = cfg.credentials || "same-origin";
+        this.headers = cfg.headers || {};
+        this.integrity = cfg.integrity || "";
+        this.keepalive = cfg.keepalive || false;
+        this.method = cfg.method || "GET";
+        this.mode = cfg.mode || "cors";
         this.redirect = cfg.redirect || "follow";
         this.referrer = cfg.referrer || "";
         this.referrerPolicy = cfg.referrerPolicy || "";
         this.url = url instanceof URL ? url.href : url;
-    }
-    clone() {
-        throw new Error("Function not implemented");
     }
 }
 export class Response extends Body {
@@ -116,14 +130,16 @@ export class Response extends Body {
         const status = cfg.status || 200;
         const url = cfg.url || "";
         this.headers = cfg.headers || {};
-        this.statusText = cfg.statusText || "";
+        this.ok = status >= 200 && status < 300;
         this.redirected = cfg.redirected || false;
         this.status = status;
-        this.ok = status >= 200 && status < 300;
+        this.statusText = cfg.statusText || "";
+        this.type = cfg.type || "default";
         this.url = url instanceof URL ? url.href : url;
     }
-    clone() {
-        throw new Error("Function not implemented");
+    writeResponse(outgoing, options) {
+        outgoing.writeHead(this.status, this.statusText, this.headers);
+        (this.body || zeroStream).pipe(outgoing, options);
     }
 }
 function rawFetch(request) {
@@ -227,6 +243,23 @@ function fetchJavascriptUrl(url) {
         throw new FetchError("Script execution failed: " + (err instanceof Error ? err.message : err));
     }
 }
+function localFetch(url) {
+    const path = decodeURIComponent(url.pathname);
+    const mime = _mime[Path.extname(path)];
+    const headers = {};
+    if (mime != null)
+        headers["content-type"] = mime;
+    try {
+        return new Response(fs.readFileSync(path, {}), {
+            status: 200,
+            url,
+            headers
+        });
+    }
+    catch (err) {
+        throw new FetchError("Failed to fetch: " + (err instanceof Error ? err.message : err));
+    }
+}
 function getRequest(req, init) {
     switch (typeof req) {
         case "string":
@@ -257,12 +290,9 @@ export default async function fetch(req, init) {
                 url
             });
         case "file:":
-            const buf = fs.readFileSync(url.pathname, {});
-            return new Response(buf, { status: 200, url });
+            return localFetch(url);
         case "data:":
             return fetchDataUrl(url);
-        case "blob:":
-            throw new FetchError("Invalid URL");
         case "javascript:":
             return fetchJavascriptUrl(url);
         default:

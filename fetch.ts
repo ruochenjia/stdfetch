@@ -2,8 +2,10 @@ import http from "http";
 import https from "https";
 import fs from "fs";
 import stream from "stream";
+import Path from "path";
 import { buffer } from "get-stream";
 import { define } from "./util.js";
+import _mime from "./mime.js";
 
 const httpAgent = new http.Agent({});
 const httpsAgent = new https.Agent({});
@@ -24,10 +26,13 @@ class LogicError extends Error {
 }
 
 type nul = null | undefined | void;
+type RequestCredentials = "include" | "omit" | "same-origin"
+type RequestCache = "default" | "force-cache" | "no-cache" | "no-store" | "only-if-cached" | "reload";
+type RequestDestination = "";
 type RequestMode = "same-origin" | "cors" | "navigate" | "no-cors";
 type RequestRedirect = "error" | "follow" | "manual";
-type RequestCache = "default" | "force-cache" | "no-cache" | "no-store" | "only-if-cached" | "reload";
-type ReferrerPolicy = "" | "origin" | "same-origin" | "no-referrer" | "no-referrer-when-downgrade" | "origin-when-cross-origin" | "strict-origin" | "strict-origin-when-cross-origin" | "unsafe-url"
+type ReferrerPolicy = "" | "origin" | "same-origin" | "no-referrer" | "no-referrer-when-downgrade" | "origin-when-cross-origin" | "strict-origin" | "strict-origin-when-cross-origin" | "unsafe-url";
+type ResponseType = "basic" | "cors" | "default" | "error" | "opaque" | "opaqueredirect";
 type DataInit = ArrayBufferLike | ArrayLike<number>;
 type SourceInit = DataInit | string | Buffer;
 type BodyInit = stream.Readable | SourceInit | Body;
@@ -36,35 +41,53 @@ interface MapLike<E> {
 	[k: string]: E;
 }
 
-interface Cloneable<E> {
-	readonly clone: () => E;
-}
-
 interface Headers extends MapLike<string> {
 }
 
 interface RequestInit {
-	readonly body?: BodyInit | nul;
-	readonly method?: string | nul;
-	readonly headers?: Headers | nul;
-	readonly keepalive?: boolean | nul;
-	readonly integrity?: string | nul;
-	readonly mode?: RequestMode | nul;
-	readonly cache?: RequestCache | nul;
-	readonly redirect?: RequestRedirect | nul;
-	readonly referrer?: string | nul;
-	readonly referrerPolicy?: ReferrerPolicy | nul;
+    readonly body?: BodyInit | nul;
+    readonly cache?: RequestCache | nul;
+    readonly credentials?: RequestCredentials | nul;
+    readonly headers?: Headers | nul;
+    readonly integrity?: string | nul;
+    readonly keepalive?: boolean | nul;
+    readonly method?: string | nul;
+    readonly mode?: RequestMode | nul;
+    readonly redirect?: RequestRedirect | nul;
+    readonly referrer?: string | nul;
+    readonly referrerPolicy?: ReferrerPolicy | nul;
 }
 
 interface ResponseInit {
 	readonly headers?: Headers | nul;
+	readonly redirected?: boolean | nul;
 	readonly status?: number | nul;
 	readonly statusText?: string | nul;
-	readonly redirected?: boolean | nul;
+	readonly type?: ResponseType | nul;
 	readonly url?: string | URL | nul;
 }
 
-export class Body {
+class Cloneable {
+	readonly this: typeof this;
+	readonly self: typeof this;
+
+	constructor() {
+		const _ref = this;
+		this.this = _ref;
+		this.self = _ref;
+	}
+
+	clone(): this {
+		// const proto = this.constructor.prototype;
+		// const obj = Object.create(proto);
+		
+
+
+		throw new Error("Function not implemented");
+	}
+}
+
+export class Body extends Cloneable {
 	readonly body: stream.Readable | null;
 
 	#cachedBuf: ArrayBuffer | nul;
@@ -72,6 +95,8 @@ export class Body {
 	#cachedJson: any;
 
 	constructor(init?: BodyInit | nul) {
+		super();
+
 		switch (typeof init) {
 			case "string":
 				this.#cachedText = init;
@@ -130,62 +155,64 @@ export class Body {
 	}
 }
 
-export class Request extends Body implements RequestInit, Cloneable<Request> {
-	readonly method: string;
-	readonly headers: Headers;
-	readonly keepalive: boolean;
-	readonly integrity: string;
-	readonly mode: RequestMode;
-	readonly cache: RequestCache;
-	readonly redirect: RequestRedirect;
-	readonly referrer: string;
-	readonly referrerPolicy: ReferrerPolicy;
+export class Request extends Body implements RequestInit {
+    readonly cache: RequestCache;
+    readonly credentials: RequestCredentials;
+    readonly destination: RequestDestination = "";
+    readonly headers: Headers;
+    readonly integrity: string;
+    readonly keepalive: boolean;
+    readonly method: string;
+    readonly mode: RequestMode;
+    readonly redirect: RequestRedirect;
+    readonly referrer: string;
+    readonly referrerPolicy: ReferrerPolicy;
 	readonly url: string;
 
 	constructor(url: string | URL, init?: RequestInit | nul) {
 		const cfg = init || {};
 		super(cfg.body);
-		this.method = cfg.method || "GET";
-		this.headers = cfg.headers || {};
-		this.keepalive = cfg.keepalive || false;
-		this.integrity = cfg.integrity || "";
-		this.mode = cfg.mode || "cors";
 		this.cache = cfg.cache || "default";
+		this.credentials = cfg.credentials || "same-origin";
+		this.headers = cfg.headers || {};
+		this.integrity = cfg.integrity || "";
+		this.keepalive = cfg.keepalive || false;
+		this.method = cfg.method || "GET";
+		this.mode = cfg.mode || "cors";
 		this.redirect = cfg.redirect || "follow";
 		this.referrer = cfg.referrer || "";
 		this.referrerPolicy = cfg.referrerPolicy || "";
 		this.url = url instanceof URL ? url.href: url;
 	}
-
-	clone(): Request {
-		throw new Error("Function not implemented");
-	}
 }
 
-export class Response extends Body implements ResponseInit, Cloneable<Response> {
+export class Response extends Body implements ResponseInit {
 	readonly headers: Headers;
-	readonly status: number;
-	readonly statusText: string;
-	readonly ok: boolean;
-	readonly redirected: boolean;
-	readonly url: string;
+    readonly ok: boolean;
+    readonly redirected: boolean;
+    readonly status: number;
+    readonly statusText: string;
+    readonly type: ResponseType;
+    readonly url: string;
 
 	constructor(body?: BodyInit | nul, init?: ResponseInit) {
 		super(body);
 		const cfg = init || {};
-		const status = cfg.status || 200;
+		const status = cfg.status || 200;	
 		const url = cfg.url || "";
 
 		this.headers = cfg.headers || {};
-		this.statusText = cfg.statusText || "";
+		this.ok = status >= 200 && status < 300;
 		this.redirected = cfg.redirected || false;
 		this.status = status;
-		this.ok = status >= 200 && status < 300;
+		this.statusText = cfg.statusText || "";
+		this.type = cfg.type || "default";
 		this.url = url instanceof URL ? url.href : url;
 	}
 
-	clone(): Response {
-		throw new Error("Function not implemented");
+	writeResponse(outgoing: http.ServerResponse, options?: { end?: boolean; }) {
+		outgoing.writeHead(this.status, this.statusText, this.headers);
+		(this.body || zeroStream).pipe(outgoing, options);
 	}
 }
 
@@ -309,6 +336,24 @@ function fetchJavascriptUrl(url: URL) {
 	}
 }
 
+function localFetch(url: URL) {
+	const path = decodeURIComponent(url.pathname);
+	const mime = _mime[Path.extname(path)];
+	const headers: Headers = {};
+	if (mime != null)
+		headers["content-type"] = mime;
+
+	try {
+		return new Response(fs.readFileSync(path, { }), {
+			status: 200,
+			url,
+			headers
+		});
+	} catch (err) {
+		throw new FetchError("Failed to fetch: " + (err instanceof Error ? err.message: err));
+	}
+}
+
 type RequestInfo = Request | URL | string;
 
 function getRequest(req: RequestInfo, init?: RequestInit | nul) {
@@ -344,12 +389,9 @@ export default async function fetch(req: RequestInfo, init?: RequestInit | nul) 
 				url
 			});
 		case "file:":
-			const buf = fs.readFileSync(url.pathname, { });
-			return new Response(buf, { status: 200, url });
+			return localFetch(url);
 		case "data:":
 			return fetchDataUrl(url);
-		case "blob:":
-			throw new FetchError("Invalid URL");
 		case "javascript:":
 			return fetchJavascriptUrl(url);
 		default:
