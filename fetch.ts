@@ -47,17 +47,17 @@ interface Headers extends MapLike<string> {
 }
 
 interface RequestInit {
-    readonly body?: BodyInit | nul;
-    readonly cache?: RequestCache | nul;
-    readonly credentials?: RequestCredentials | nul;
-    readonly headers?: Headers | nul;
-    readonly integrity?: string | nul;
-    readonly keepalive?: boolean | nul;
-    readonly method?: string | nul;
-    readonly mode?: RequestMode | nul;
-    readonly redirect?: RequestRedirect | nul;
-    readonly referrer?: string | nul;
-    readonly referrerPolicy?: ReferrerPolicy | nul;
+	readonly body?: BodyInit | nul;
+	readonly cache?: RequestCache | nul;
+	readonly credentials?: RequestCredentials | nul;
+	readonly headers?: Headers | nul;
+	readonly integrity?: string | nul;
+	readonly keepalive?: boolean | nul;
+	readonly method?: string | nul;
+	readonly mode?: RequestMode | nul;
+	readonly redirect?: RequestRedirect | nul;
+	readonly referrer?: string | nul;
+	readonly referrerPolicy?: ReferrerPolicy | nul;
 }
 
 interface ResponseInit {
@@ -158,17 +158,17 @@ export class Body extends Cloneable {
 }
 
 export class Request extends Body implements RequestInit {
-    readonly cache: RequestCache;
-    readonly credentials: RequestCredentials;
-    readonly destination: RequestDestination = "";
-    readonly headers: Headers;
-    readonly integrity: string;
-    readonly keepalive: boolean;
-    readonly method: string;
-    readonly mode: RequestMode;
-    readonly redirect: RequestRedirect;
-    readonly referrer: string;
-    readonly referrerPolicy: ReferrerPolicy;
+	readonly cache: RequestCache;
+	readonly credentials: RequestCredentials;
+	readonly destination: RequestDestination = "";
+	readonly headers: Headers;
+	readonly integrity: string;
+	readonly keepalive: boolean;
+	readonly method: string;
+	readonly mode: RequestMode;
+	readonly redirect: RequestRedirect;
+	readonly referrer: string;
+	readonly referrerPolicy: ReferrerPolicy;
 	readonly url: string;
 
 	constructor(url: string | URL, init?: RequestInit | nul) {
@@ -190,12 +190,12 @@ export class Request extends Body implements RequestInit {
 
 export class Response extends Body implements ResponseInit {
 	readonly headers: Headers;
-    readonly ok: boolean;
-    readonly redirected: boolean;
-    readonly status: number;
-    readonly statusText: string;
-    readonly type: ResponseType;
-    readonly url: string;
+	readonly ok: boolean;
+	readonly redirected: boolean;
+	readonly status: number;
+	readonly statusText: string;
+	readonly type: ResponseType;
+	readonly url: string;
 
 	constructor(body?: BodyInit | nul, init?: ResponseInit) {
 		super(body);
