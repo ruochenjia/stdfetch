@@ -150,7 +150,7 @@ function validateUrl(url) {
         return new URL(url).href;
     }
     catch (err) {
-        throw new LogicError(url + " is not a valid URL.");
+        throw new LogicError(`'${url}' is not a valid URL`);
     }
 }
 function rawFetch(request) {
@@ -202,7 +202,7 @@ async function redirectFetch(request, count = 0) {
     if (count > 10) {
         throw new FetchError("Too many redirects");
     }
-    define(request, "url", location);
+    define(request, "url", new URL(location, request.url));
     return await redirectFetch(request, ++count);
 }
 async function noRedirectFetch(request) {
