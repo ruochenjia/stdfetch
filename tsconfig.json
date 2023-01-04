@@ -8,6 +8,7 @@
 		"checkJs": false,
 		"charset": "utf-8",
 		"sourceMap": false,
+		"declaration": true,
 		"alwaysStrict": true,
 		"moduleResolution": "Node16",
 		"strictNullChecks": true,
