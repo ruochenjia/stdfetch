@@ -1,23 +1,30 @@
 {
 	"name": "stdfetch",
 	"version": "0.1.8",
-	"author": "Ruochen Jia",
 	"description": "A full implementation of DOM fetch API for Node.js",
 	"license": "MIT",
 	"main": "fetch.js",
 	"type": "module",
-	"keywords": [
-		"fetch",
-		"dom"
-	],
+	"homepage": "https://github.com/ruochenjia/stdfetch#readme",
+	"bugs": "https://github.com/ruochenjia/stdfetch/issues",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/ruochenjia/stdfetch.git"
 	},
-	"bugs": {
-		"url": "https://github.com/ruochenjia/stdfetch/issues"
+	"author": {
+		"name": "Ruochen Jia",
+		"url": "https://github.com/ruochenjia"
 	},
-	"homepage": "https://github.com/ruochenjia/stdfetch#readme",
+	"keywords": [
+		"fetch",
+		"dom"
+	],
+	"files": [
+		"fetch.js",
+		"fetch.d.ts",
+		"mime.js",
+		"util.js"
+	],
 	"dependencies": {
 		"@types/node": "^18.11.17",
 		"get-stream": "^6.0.1"
