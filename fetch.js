@@ -10,7 +10,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _Body_cachedBuf, _Body_cachedText, _Body_cachedJson;
+var _Body_cachedBuffer, _Body_cachedArrayBuffer, _Body_cachedBlob, _Body_cachedText, _Body_cachedJson;
 import http from "http";
 import https from "https";
 import fs from "fs";
@@ -21,8 +21,9 @@ import { define } from "./util.js";
 import _mime from "./mime.js";
 const httpAgent = new http.Agent({});
 const httpsAgent = new https.Agent({});
-const zeroStream = stream.Readable.from([], { autoDestroy: false, emitClose: false, encoding: "utf-8" });
-const zeroBuffer = new ArrayBuffer(0);
+const zeroStream = stream.Readable.from([], { autoDestroy: false, emitClose: true, encoding: "utf-8" });
+const zeroArrayBuffer = new ArrayBuffer(0);
+const zeroBuffer = Buffer.from(zeroArrayBuffer, 0, 0);
 const decoder = new TextDecoder("utf-8", { fatal: false, ignoreBOM: false });
 class FetchError extends Error {
     constructor(message) {
@@ -47,21 +48,25 @@ class Cloneable {
 export class Body extends Cloneable {
     constructor(init) {
         super();
-        _Body_cachedBuf.set(this, void 0);
+        _Body_cachedBuffer.set(this, void 0);
+        _Body_cachedArrayBuffer.set(this, void 0);
+        _Body_cachedBlob.set(this, void 0);
         _Body_cachedText.set(this, void 0);
         _Body_cachedJson.set(this, void 0);
+        if (init == null) {
+            this.body = null;
+            return;
+        }
         switch (typeof init) {
             case "string":
+                this.body = stream.Readable.from(init, { encoding: "utf-8", autoDestroy: true, emitClose: true });
                 __classPrivateFieldSet(this, _Body_cachedText, init, "f");
-                this.body = stream.Readable.from(init, { encoding: "utf-8", autoDestroy: false, emitClose: false });
                 break;
             case "object":
-                if (init == null) {
-                    this.body = null;
-                }
-                else if (init instanceof Body) {
+                if (init instanceof Body) {
                     this.body = init.body;
-                    __classPrivateFieldSet(this, _Body_cachedBuf, __classPrivateFieldGet(init, _Body_cachedBuf, "f"), "f");
+                    __classPrivateFieldSet(this, _Body_cachedBuffer, __classPrivateFieldGet(init, _Body_cachedBuffer, "f"), "f");
+                    __classPrivateFieldSet(this, _Body_cachedArrayBuffer, __classPrivateFieldGet(init, _Body_cachedArrayBuffer, "f"), "f");
                     __classPrivateFieldSet(this, _Body_cachedText, __classPrivateFieldGet(init, _Body_cachedText, "f"), "f");
                     __classPrivateFieldSet(this, _Body_cachedJson, __classPrivateFieldGet(init, _Body_cachedJson, "f"), "f");
                 }
@@ -70,29 +75,43 @@ export class Body extends Cloneable {
                 }
                 else {
                     const buf = new Uint8Array(init);
-                    __classPrivateFieldSet(this, _Body_cachedBuf, buf, "f");
-                    this.body = stream.Readable.from(buf, { autoDestroy: false, emitClose: false });
+                    __classPrivateFieldSet(this, _Body_cachedBuffer, Buffer.from(buf), "f");
+                    __classPrivateFieldSet(this, _Body_cachedArrayBuffer, buf.buffer, "f");
+                    this.body = stream.Readable.from(buf, { encoding: "binary", autoDestroy: true, emitClose: true });
                 }
                 break;
             default:
                 this.body = null;
         }
     }
-    async arrayBuffer() {
-        const cached = __classPrivateFieldGet(this, _Body_cachedBuf, "f");
+    async buffer() {
+        const cached = __classPrivateFieldGet(this, _Body_cachedBuffer, "f");
         if (cached != null)
             return cached;
         const body = this.body;
         if (body == null)
-            return __classPrivateFieldSet(this, _Body_cachedBuf, zeroBuffer, "f");
-        const buf = await buffer(body, {});
-        return __classPrivateFieldSet(this, _Body_cachedBuf, buf.buffer, "f");
+            return __classPrivateFieldSet(this, _Body_cachedBuffer, zeroBuffer, "f");
+        return __classPrivateFieldSet(this, _Body_cachedBuffer, await buffer(body, {}), "f");
+    }
+    async arrayBuffer() {
+        const cached = __classPrivateFieldGet(this, _Body_cachedArrayBuffer, "f");
+        if (cached != null)
+            return cached;
+        const buffer = (await this.buffer()).buffer;
+        return __classPrivateFieldSet(this, _Body_cachedArrayBuffer, buffer, "f");
+    }
+    async blob() {
+        const cached = __classPrivateFieldGet(this, _Body_cachedBlob, "f");
+        if (cached != null)
+            return cached;
+        const blob = new Blob([await this.buffer()], { encoding: "binary", type: "unknown" });
+        return __classPrivateFieldSet(this, _Body_cachedBlob, blob, "f");
     }
     async text() {
         const cached = __classPrivateFieldGet(this, _Body_cachedText, "f");
         if (cached != null)
             return cached;
-        const text = decoder.decode(await this.arrayBuffer(), { stream: false });
+        const text = decoder.decode(await this.buffer(), { stream: false });
         return __classPrivateFieldSet(this, _Body_cachedText, text, "f");
     }
     async json() {
@@ -103,7 +122,7 @@ export class Body extends Cloneable {
         return __classPrivateFieldSet(this, _Body_cachedJson, json, "f");
     }
 }
-_Body_cachedBuf = new WeakMap(), _Body_cachedText = new WeakMap(), _Body_cachedJson = new WeakMap();
+_Body_cachedBuffer = new WeakMap(), _Body_cachedArrayBuffer = new WeakMap(), _Body_cachedBlob = new WeakMap(), _Body_cachedText = new WeakMap(), _Body_cachedJson = new WeakMap();
 export class Request extends Body {
     constructor(url, init) {
         const cfg = init || {};

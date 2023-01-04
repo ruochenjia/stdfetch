@@ -11,8 +11,9 @@ import _mime from "./mime.js";
 
 const httpAgent = new http.Agent({});
 const httpsAgent = new https.Agent({});
-const zeroStream = stream.Readable.from([], { autoDestroy: false, emitClose: false, encoding: "utf-8" });
-const zeroBuffer = new ArrayBuffer(0);
+const zeroStream = stream.Readable.from([], { autoDestroy: false, emitClose: true, encoding: "utf-8" });
+const zeroArrayBuffer = new ArrayBuffer(0);
+const zeroBuffer = Buffer.from(zeroArrayBuffer, 0, 0);
 const decoder = new TextDecoder("utf-8", { fatal: false, ignoreBOM: false });
 
 class FetchError extends Error {
@@ -87,32 +88,38 @@ class Cloneable {
 export class Body extends Cloneable {
 	readonly body: stream.Readable | null;
 
-	#cachedBuf: ArrayBuffer | nul;
+	#cachedBuffer: Buffer | nul;
+	#cachedArrayBuffer: ArrayBufferLike | nul;
+	#cachedBlob: Blob | nul;
 	#cachedText: string | nul;
 	#cachedJson: any;
 
 	constructor(init?: BodyInit | nul) {
 		super();
+		if (init == null) {
+			this.body = null;
+			return;
+		}
 
 		switch (typeof init) {
 			case "string":
+				this.body = stream.Readable.from(init, { encoding: "utf-8", autoDestroy: true, emitClose: true });
 				this.#cachedText = init;
-				this.body = stream.Readable.from(init, { encoding: "utf-8", autoDestroy: false, emitClose: false });
 				break;
 			case "object":
-				if (init == null) {
-					this.body = null;
-				} else if (init instanceof Body) {
+				if (init instanceof Body) {
 					this.body = init.body;
-					this.#cachedBuf = init.#cachedBuf;
+					this.#cachedBuffer = init.#cachedBuffer;
+					this.#cachedArrayBuffer = init.#cachedArrayBuffer;
 					this.#cachedText = init.#cachedText;
 					this.#cachedJson = init.#cachedJson;
 				} else if (init instanceof stream.Readable) {
 					this.body = init;
 				} else {
 					const buf = new Uint8Array(init);
-					this.#cachedBuf = buf;
-					this.body = stream.Readable.from(buf, { autoDestroy: false, emitClose: false });
+					this.#cachedBuffer = Buffer.from(buf);
+					this.#cachedArrayBuffer = buf.buffer;
+					this.body = stream.Readable.from(buf, { encoding: "binary", autoDestroy: true, emitClose: true });
 				}
 				break;
 			default:
@@ -120,17 +127,34 @@ export class Body extends Cloneable {
 		}
 	}
 
-	async arrayBuffer() {
-		const cached = this.#cachedBuf;
+	async buffer() {
+		const cached = this.#cachedBuffer;
 		if (cached != null)
 			return cached;
 
 		const body = this.body;
 		if (body == null)
-			return this.#cachedBuf = zeroBuffer;
+			return this.#cachedBuffer = zeroBuffer;
 
-		const buf = await buffer(body, { });
-		return this.#cachedBuf = buf.buffer;
+		return this.#cachedBuffer = await buffer(body, {});
+	}
+
+	async arrayBuffer() {
+		const cached = this.#cachedArrayBuffer;
+		if (cached != null)
+			return cached;
+
+		const buffer = (await this.buffer()).buffer;
+		return this.#cachedArrayBuffer = buffer;
+	}
+
+	async blob() {
+		const cached = this.#cachedBlob;
+		if (cached != null)
+			return cached;
+
+		const blob = new Blob([await this.buffer()], { encoding: "binary", type: "unknown" });
+		return this.#cachedBlob = blob;
 	}
 
 	async text() {
@@ -138,7 +162,7 @@ export class Body extends Cloneable {
 		if (cached != null)
 			return cached;
 
-		const text = decoder.decode(await this.arrayBuffer(), { stream: false });
+		const text = decoder.decode(await this.buffer(), { stream: false });
 		return this.#cachedText = text;
 	}
 
