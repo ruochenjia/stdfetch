@@ -7,6 +7,7 @@ import stream from "stream";
 import Path from "path";
 import { buffer } from "get-stream";
 import { define } from "./util.js";
+import _status from "./status.js";
 import _mime from "./mime.js";
 
 const httpAgent = new http.Agent({});
@@ -14,7 +15,6 @@ const httpsAgent = new https.Agent({});
 const zeroStream = stream.Readable.from([], { autoDestroy: false, emitClose: true, encoding: "utf-8" });
 const zeroArrayBuffer = new ArrayBuffer(0);
 const zeroBuffer = Buffer.from(zeroArrayBuffer, 0, 0);
-const decoder = new TextDecoder("utf-8", { fatal: false, ignoreBOM: false });
 
 class FetchError extends Error {
 	constructor(message?: string | undefined) {
@@ -70,16 +70,7 @@ interface ResponseInit {
 	readonly url?: string | URL | nul;
 }
 
-class Cloneable {
-	readonly this: typeof this;
-	readonly self: typeof this;
-
-	constructor() {
-		const _ref = this;
-		this.this = _ref;
-		this.self = _ref;
-	}
-
+class Cloneable extends null {
 	clone(): this {
 		throw new Error("Function not implemented");
 	}
@@ -162,7 +153,7 @@ export class Body extends Cloneable {
 		if (cached != null)
 			return cached;
 
-		const text = decoder.decode(await this.buffer(), { stream: false });
+		const text = (await this.buffer()).toString("utf-8");
 		return this.#cachedText = text;
 	}
 
@@ -229,7 +220,7 @@ export class Response extends Body implements ResponseInit {
 		this.ok = status >= 200 && status < 300;
 		this.redirected = cfg.redirected || false;
 		this.status = status;
-		this.statusText = cfg.statusText || "";
+		this.statusText = cfg.statusText || (_status[status] || "");
 		this.type = cfg.type || "default";
 		this.url = url == null ? "" : validateUrl(url);
 	}
