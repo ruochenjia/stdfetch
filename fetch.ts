@@ -6,7 +6,6 @@ import fs from "fs";
 import stream from "stream";
 import Path from "path";
 import { buffer } from "get-stream";
-import { define } from "./util.js";
 import _status from "./status.js";
 import _mime from "./mime.js";
 
@@ -302,7 +301,7 @@ async function redirectFetch(request: Request, count: number = 0): Promise<http.
 		throw new FetchError("Too many redirects");
 	}
 
-	define(request, "url", new URL(location, request.url));
+	Object.defineProperty(request, "url", { value: new URL(location, request.url).href });
 	return await redirectFetch(request, ++count);
 }
 
