@@ -31,6 +31,7 @@ type RequestMode = "same-origin" | "cors" | "navigate" | "no-cors";
 type RequestRedirect = "error" | "follow" | "manual";
 type ReferrerPolicy = "" | "origin" | "same-origin" | "no-referrer" | "no-referrer-when-downgrade" | "origin-when-cross-origin" | "strict-origin" | "strict-origin-when-cross-origin" | "unsafe-url";
 type ResponseType = "basic" | "cors" | "default" | "error" | "opaque" | "opaqueredirect";
+type RequestInfo = Request | URL | string;
 type DataInit = ArrayBufferLike | ArrayLike<number>;
 type SourceInit = DataInit | string | Buffer;
 type BodyInit = stream.Readable | SourceInit | Body;
@@ -489,8 +490,6 @@ function localFetch(url: URL) {
 		throw new FetchError("Failed to fetch: " + (err instanceof Error ? err.message : err));
 	}
 }
-
-type RequestInfo = Request | URL | string;
 
 function getRequest(req: RequestInfo, init?: RequestInit | nul) {
 	switch (typeof req) {
