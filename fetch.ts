@@ -66,6 +66,7 @@ export class Headers extends Cloneable {
 	readonly has: (key: string) => boolean;
 	readonly delete: (key: string) => boolean;
 	readonly clear: () => void;
+	readonly assign: (init: HeadersInit) => void;
 
 	declare readonly keys: string[];
 	declare readonly values: string[];
@@ -101,6 +102,10 @@ export class Headers extends Cloneable {
 			for (const k of Object.keys(variables)) {
 				delete variables[k];
 			}
+		};
+
+		this.assign = (init) => {
+			Object.assign(variables, headersInit(init));
 		};
 
 		Object.defineProperty(this, "keys", {
