@@ -1,6 +1,6 @@
 {
 	"name": "stdfetch",
-	"version": "0.1.9",
+	"version": "0.2.0",
 	"description": "A full implementation of DOM fetch API for Node.js",
 	"license": "MIT",
 	"main": "fetch.js",
@@ -26,7 +26,6 @@
 		"status.js"
 	],
 	"dependencies": {
-		"@types/node": "^18.11.17",
-		"get-stream": "^6.0.1"
+		"@types/node": "^18.11.17"
 	}
 }
