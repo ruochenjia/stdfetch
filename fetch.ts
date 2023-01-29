@@ -3,9 +3,9 @@
 import http from "http";
 import https from "https";
 import fs from "fs";
+import util from "util";
 import stream from "stream";
 import Path from "path";
-import { buffer } from "get-stream";
 import _status from "./status.js";
 import _mime from "./mime.js";
 
@@ -14,18 +14,14 @@ const httpsAgent = new https.Agent({});
 const zeroStream = stream.Readable.from([], { autoDestroy: false, emitClose: true, encoding: "utf-8" });
 const zeroArrayBuffer = new ArrayBuffer(0);
 const zeroBuffer = Buffer.from(zeroArrayBuffer, 0, 0);
+const pipeline = util.promisify(stream.pipeline);
 
-class FetchError extends Error {
-	constructor(message?: string | undefined) {
-		super(message);
-	}
+class FetchError extends Error {}
+class LogicError extends Error {}
+class Cloneable extends null {
+	clone(): this { throw new Error("Function not implemented"); }
 }
-
-class LogicError extends Error {
-	constructor(message?: string | undefined) {
-		super(message);
-	}
-}
+Object.setPrototypeOf(Cloneable, class _Null_ {});
 
 type nul = null | undefined | void;
 type RequestCredentials = "include" | "omit" | "same-origin"
@@ -69,12 +65,6 @@ interface ResponseInit {
 	readonly url?: string | URL | nul;
 }
 
-class Cloneable extends null {
-	clone(): this {
-		throw new Error("Function not implemented");
-	}
-}
-
 export class Body extends Cloneable {
 	readonly body: stream.Readable | null;
 
@@ -105,15 +95,19 @@ export class Body extends Cloneable {
 					this.#cachedJson = init.#cachedJson;
 				} else if (init instanceof stream.Readable) {
 					this.body = init;
+				} else if (init instanceof Buffer) {
+					this.#cachedBuffer = init;
+					this.#cachedArrayBuffer = init.buffer;
+					this.body = stream.Readable.from(init, { encoding: "binary", autoDestroy: true, emitClose: true });
 				} else {
 					const buf = new Uint8Array(init);
-					this.#cachedBuffer = Buffer.from(buf);
+					this.#cachedBuffer = Buffer.from(buf, 0, buf.length);
 					this.#cachedArrayBuffer = buf.buffer;
 					this.body = stream.Readable.from(buf, { encoding: "binary", autoDestroy: true, emitClose: true });
 				}
 				break;
 			default:
-				this.body = null;
+				throw new LogicError("Invalid type for body init.");
 		}
 	}
 
@@ -126,7 +120,7 @@ export class Body extends Cloneable {
 		if (body == null)
 			return this.#cachedBuffer = zeroBuffer;
 
-		return this.#cachedBuffer = await buffer(body, {});
+		return this.#cachedBuffer = await getStreamBuffer(body);
 	}
 
 	async arrayBuffer() {
@@ -163,6 +157,14 @@ export class Body extends Cloneable {
 
 		const json = JSON.parse(await this.text());
 		return this.#cachedJson = json;
+	}
+
+	async writeData(out: stream.Writable, options?: { end?: boolean | nul; } | nul) {
+		const buf = await this.buffer();
+		const opt = options || {};
+		out.write(buf);
+		if (opt.end)
+			out.end();
 	}
 }
 
@@ -224,9 +226,9 @@ export class Response extends Body implements ResponseInit {
 		this.url = url == null ? "" : validateUrl(url);
 	}
 
-	writeResponse(outgoing: http.ServerResponse, options?: { end?: boolean; }) {
+	async writeResponse(outgoing: http.ServerResponse, options?: { end?: boolean | nul; } | nul) {
 		outgoing.writeHead(this.status, this.statusText, this.headers);
-		(this.body || zeroStream).pipe(outgoing, options);
+		await this.writeData(outgoing, options);
 	}
 }
 
@@ -239,6 +241,14 @@ function validateUrl(url: string | URL) {
 	} catch (err) {
 		throw new LogicError(`'${url}' is not a valid URL`);
 	}
+}
+
+async function getStreamBuffer(readable: stream.Readable) {
+	const out = new stream.PassThrough({ });
+	const chunks: Uint8Array[] = [];
+	out.on("data", (chunk) => chunks.push(chunk));
+	await pipeline(readable, out);
+	return Buffer.concat(chunks);
 }
 
 function rawFetch(request: Request): Promise<http.IncomingMessage> {
