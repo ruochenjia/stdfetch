@@ -513,13 +513,16 @@ export default async function fetch(req: RequestInfo, init?: RequestInit | nul) 
 		case "http:":
 		case "https:":
 			const incoming = await remoteFetch(request);
-			const redirectCount = incoming.headers["_$0_redirect_count"] || 0;
+			const headers = incoming.headers;
+			const redirectCount = headers["_$0_redirect_count"] || 0;
+
+			delete headers["_$0_redirect_count"];
 
 			return new Response(incoming, {
 				status: incoming.statusCode,
 				statusText: incoming.statusMessage,
 				redirected: redirectCount > 0,
-				headers: incoming.headers as Record<string, string>,
+				headers: headers as Record<string, string>,
 				url
 			});
 		case "file:":
