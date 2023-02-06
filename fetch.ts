@@ -355,14 +355,14 @@ async function getStreamBuffer(readable: stream.Readable) {
 function rawFetch(request: Request): Promise<http.IncomingMessage> {
 	const url = new URL(request.url);
 	const protocol = url.protocol;
-	const host = url.host;
 	const headers = request.headers;
 
-	headers.set("Host", url.host);
+	headers.delete("Host");
 
 	const options: http.RequestOptions = {
 		protocol,
-		host,
+		hostname: url.hostname,
+		port: url.port,
 
 		// This is the path includes searchParams, so do not use 'url.pathname' here
 		// Instead, remove the origin from the href
